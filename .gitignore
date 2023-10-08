@@ -1,0 +1,9 @@
+settings.json
+*.ini
+*.txt
+*.pyc
+*.lnk
+*.code-workspace
+*.bat
+\testing_only
+\old
