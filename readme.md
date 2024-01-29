@@ -3,6 +3,8 @@
 
 ### DigiDEC is software written in Python to parse, log, and display emergency alerts recieved by the Sage EAS ENDEC model 1822 via local serial connection (WIP) or a remote serial server.
 
+![This is an image](/example_alert.png)
+
 # Features
 
 ✔️ Telnet based serial server support
