@@ -1,0 +1,14 @@
+[Unit]
+Description=DigiDec
+After=syslog.target
+
+[Service]
+ExecStart=/usr/bin/python3 <YOUR_PATH_HERE>/core.py
+Restart=always
+RestartSec=120
+WorkingDirectory=<YOUR_PATH_HERE>
+User=root
+SyslogIdentifier=digidec_service
+
+[Install]
+WantedBy=multi-user.target

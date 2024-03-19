@@ -1,31 +1,14 @@
-<!-- PHP code to establish connection with the localserver -->
-<?php
- 
-// Be smart and not hardcode creds dumdum
-    $db_params = parse_ini_file( dirname(__FILE__).'/tx_db_creds.ini', false );
-    $con=new mysqli($db_params['host'], $db_params['user'], $db_params['password'], $db_params['dbname'], $db_params['port'], $db_params['socket']);
-    // Check connection
-    if (mysqli_connect_errno())
-      {
-      echo "Failed to connect to MySQL: " . mysqli_connect_error();
-      }
-
-    $result = mysqli_query($con,"SELECT * FROM alerts ORDER BY TIMESTP DESC");
-?>
-<!-- HTML code to display data in tabular format -->
 <!DOCTYPE html>
 <html lang="en">
- 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/x-icon" href="favicon.jpg">
-    <title>DigiDEC Sent Alerts</title>
-    <!-- CSS FOR STYLING THE PAGE -->
-    <style>
-        <?php include "./page.css" ?>
+    <title>DigiDEC Recieved Alerts</title>
+	<style>
+        <?php include "./digidec.css" ?>
     </style>
 </head>
- 
 <body onload="set_cell_colors()">
     <div class="box">
                 <div class="header">
@@ -34,60 +17,157 @@
                 <div class="navbar" style="padding-bottom: 10px;">
                     <ul>
                         <li><a href="/recieved.php">Received Alerts</a></li>
-                        <li><a class="active"  href="/sent.php">Sent Alerts</a></li>
-                        <li><a href="#kek">Alert Statistics</a></li>
+                        <li><a class="active" href="/sent.php">Sent Alerts</a></li>
+                        <li><a href="/statistics.php">Alert Statistics</a></li>
                         <li><a href="/about.php">About</a></li>
                       </ul>
                 </div>
-                <div class="alert_table" id="alert_table"> 
-                    <table>
-                        <tr>
-                            <th><P class="tabletext">Timestamp</P></th>
-                            <th><P class="tabletext">Event</P></th>
-                            <th><P class="tabletext">Description</P></th>
-                            <th><P class="tabletext">ZCZC</P></th>
-                        </tr>
-                        <!-- PHP CODE TO FETCH DATA FROM ROWS -->
-                        <?php
-                            // LOOP TILL END OF DATA
-                            while($rows = mysqli_fetch_array($result))
-                            {
-                        ?>
-                        <tr>
-                            <!-- FETCHING DATA FROM EACH ROW OF EVERY COLUMN -->
-                            <td><P class="tabletext" id="timestamp"><?php echo $rows['TIMESTP'];?></P></td>
-                            <td><P class="tabletext" id="event_text"><?php echo $rows['EVENT_TXT'];?></P></td>
-                            <td><P class="tabletext" id="description"><?php echo $rows['DESCR'];?></P></td>
-                            <td><P class="tabletext"id="zczc_text"><?php echo $rows['ZCZC_STR'];?></P></td>
-                            <td style="display:none;"><P class="tabletext" id="alert_type"><?php echo $rows['TYPE'];?></P></td>
-                        </tr>
-                        <?php
-                            }
-                        ?>
-                    </table>
-                </div>
-            </div>
-            <script>
-                function set_cell_colors(){
-                    var table = document.getElementById('alert_table');
-                    var tbody = table.getElementsByTagName('tbody')[0];
-                    var cells = tbody.getElementsByTagName('td');
+		<form id="filterForm">
+			<label for="year">Year:</label>
+			<select name="year" id="year">
+			<option value="">All</option>
+				<?php
+				// Generate options for years based on available data
+				$currentYear = date('Y');
+				for ($i = $currentYear; $i >= 2023; $i--) {
+					$selected = ($i == $currentYear) ? "selected" : "";
+					echo "<option value='$i' $selected>$i</option>";
+				}
+				?>
+			</select>
+			<label for="event_code">Event:</label>
+			<select name="event_code" id="event_code">
+				<option value="">All</option>
+				<?php
+				// Associative array mapping event codes to their names
+				$event_names = array(
+					"ADR" => "Administrative Message",
+					"AVA" => "Avalanche Watch",
+					"AVW" => "Avalanche Warning",
+					"BZW" => "Blizzard Warning",
+					"CAE" => "Child Abduction Emergency",
+					"CDW" => "Civil Danger Warning",
+					"CEM" => "Civil Emergency Message",
+					"CFA" => "Coastal Flood Watch",
+					"CFW" => "Coastal Flood Warning",
+					"DMO" => "Practice/Demo Warning",
+					"DSW" => "Dust Storm Warning",
+					"EAN" => "Emergency Action Notification",
+					"EAT" => "Emergency Action Termination",
+					"EQW" => "Earthquake Warning",
+					"EVI" => "Evacuation Immediate",
+					"EWW" => "Extreme Wind Warning",
+					"FFA" => "Flash Flood Watch",
+					"FFS" => "Flash Flood Statement",
+					"FFW" => "Flash Flood Warning",
+					"FLA" => "Flood Watch",
+					"FLS" => "Flood Statement",
+					"FLW" => "Flood Warning",
+					"FRW" => "Fire Warning",
+					"FSW" => "Flash Freeze Warning",
+					"FZW" => "Freeze Warning",
+					"HLS" => "Hurricane Local Statement",
+					"HMW" => "Hazardous Material Warning",
+					"HUA" => "Hurricane Warning",
+					"HUW" => "Hurricane Watch",
+					"HWA" => "High Wind Watch",
+					"HWW" => "High Wind Warning",
+					"LAE" => "Local Area Emergency",
+					"LEW" => "Law Enforcement Warning",
+					"NAT" => "National Audible Test",
+					"NIC" => "National Information Center",
+					"NMN" => "Network Notification Message",
+					"NPT" => "National Periodic Test",
+					"NST" => "National Silent Test",
+					"NUW" => "Nuclear Power Plant Warning",
+					"RHW" => "Radiological Hazard Warning",
+					"RMT" => "Required Monthly Test",
+					"RWT" => "Requred Weekly Test",
+					"SMW" => "Special Marine Warning",
+					"SPS" => "Special Weather Statement",
+					"SPW" => "Shelter In-Place Warning",
+					"SQW" => "Snow Squall Warning",
+					"SSA" => "Storm Surge Watch",
+					"SSW" => "Storm Surge Warning",
+					"SVA" => "Severe Thunderstorm Watch",
+					"SVR" => "Severe Thunderstorm Warning",
+					"SVS" => "Severe Weather Statement",
+					"TOA" => "Tornado Watch",
+					"TOR" => "Tornado Warning",
+					"TRA" => "Tropical Storm Watch",
+					"TRW" => "Tropical Storm Warning",
+					"TSA" => "Tsunami Watch",
+					"TSW" => "Tsunami Warning",
+					"VOW" => "Volcano Warning",
+					"WSA" => "Winter Storm Watch",
+					"WSW" => "Winter Storm Warning"
+				);
 
-                    for (var i=0, len=cells.length; i<len; i++){
-                        if (cells[i].innerText == "test"){
-                            cells[i-3].id = 'test';
-                        }
-                        else if (cells[i].innerText == "advisory"){
-                            cells[i-3].id = 'advisory';
-                        }
-                        else if (cells[i].innerText == "watch"){
-                            cells[i-3].id = 'watch';
-                        }
-                        else if (cells[i].innerText == "warning"){
-                            cells[i-3].id = 'warning';
-                        }
-                    }
+				// Generate options for event codes
+				foreach ($event_names as $code => $name) {
+					echo "<option value='$code'>$name</option>";
+				}
+				?>
+			</select>
+			<input type="submit" class="filterbttn" value="Filter">
+		</form>
+
+		<!-- Display alerts table here -->
+		<div class="alert_table" id="alert_table">
+			<table border="1" id="alertsTable" style="width: -webkit-fill-available">
+				<thead>
+					<tr>
+						<th><P class="tabletext">Timestamp</th>
+						<th><P class="tabletext">Event</th>
+						<th><P class="tabletext">Description</th>
+						<th><P class="tabletext">ZCZC</th>
+					</tr>
+				</thead>
+				<tbody id="alertsBody">
+					<!-- PHP will populate this section -->
+					<?php include 'display_alerts_tx.php'; ?>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+    <script>
+		function set_cell_colors(){
+				var table = document.getElementById('alert_table');
+				var tbody = table.getElementsByTagName('tbody')[0];
+				var cells = tbody.getElementsByTagName('td');
+
+				for (var i=0, len=cells.length; i<len; i++){
+					if (cells[i].innerText == "test"){
+						cells[i-3].id = 'test';
+					}
+					else if (cells[i].innerText == "advisory"){
+						cells[i-3].id = 'advisory';
+					}
+					else if (cells[i].innerText == "watch"){
+						cells[i-3].id = 'watch';
+					}
+					else if (cells[i].innerText == "warning"){
+						cells[i-3].id = 'warning';
+					}
+				}
+			}
+        document.getElementById('filterForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent form submission
+            
+            var formData = new FormData(this); // Get form data
+            var xhr = new XMLHttpRequest(); // Create new XMLHttpRequest object
+            
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    document.getElementById('alertsBody').innerHTML = xhr.responseText; // Replace table body content
+					set_cell_colors();
                 }
-            </script>
-    </body>
+            };
+            
+            xhr.open('GET', 'display_alerts_tx.php?' + new URLSearchParams(formData).toString(), true); // Prepare GET request
+            xhr.send(); // Send request
+        });
+    </script>
+</body>
 </html>

@@ -129,3 +129,91 @@ div.about{
     text-align: center;
     padding-top: 20px;
 }
+
+select {
+  color: white;
+  padding: 16px 20px;
+  border: none;
+  border-radius: 4px;
+  background-color: #333;
+}
+
+input.filterbttn {
+	color: white;
+  padding: 16px 20px;
+  border: none;
+  border-radius: 4px;
+  background-color: #333;
+}
+
+form {
+	padding-bottom: 10px;
+}
+
+.warningheader {
+    border-radius: 10px;
+    background-color: red;
+    padding: 5px;
+    width: fit-content;
+    filter: brightness(80%);
+    font-weight: bold;
+}
+
+.watchheader {
+    border-radius: 10px;
+    background-color: orange;
+    padding: 5px;
+    width: fit-content;
+    filter: brightness(80%);
+    font-weight: bold;
+}
+
+.advisoryheader {
+    border-radius: 10px;
+    background-color: yellow;
+    padding: 5px;
+    width: fit-content;
+    filter: brightness(80%);
+    font-weight: bold;
+}
+
+.testheader {
+    border-radius: 10px;
+    background-color: green;
+    padding: 5px;
+    width: fit-content;
+    filter: brightness(80%);
+    font-weight: bold;
+}
+
+.statheader {
+    font-weight: bolder;
+    text-decoration: underline;
+}
+
+.statistics {
+    display: flex;
+}
+
+.monchan, .overallstats {
+    display: inline-grid;
+    padding: 10px;
+}
+
+.overallstats, .moststats, .monchan {
+    padding: 10px;
+    flex: auto;
+}
+
+.moststats {
+    text-align: -webkit-center;
+}
+
+.mostsheader {
+    padding: 5px;
+    font-weight: bold;
+    border-radius: 10px;
+    filter: brightness(80%);
+    background-color: red;
+    width: fit-content;
+}
