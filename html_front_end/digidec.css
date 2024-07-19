@@ -139,15 +139,15 @@ select {
 }
 
 input.filterbttn {
-	color: white;
-  padding: 16px 20px;
-  border: none;
-  border-radius: 4px;
-  background-color: #333;
+    color: white;
+    padding: 16px 20px;
+    border: none;
+    border-radius: 4px;
+    background-color: #333;
 }
 
 form {
-	padding-bottom: 10px;
+    padding-bottom: 10px;
 }
 
 .warningheader {
@@ -216,4 +216,9 @@ form {
     filter: brightness(80%);
     background-color: red;
     width: fit-content;
+}
+
+#zczc_text {
+    overflow: visible;
+    overflow-wrap: anywhere;
 }
