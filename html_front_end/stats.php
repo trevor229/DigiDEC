@@ -1,160 +1,6 @@
 <?php
-// Include connection script, but also initiate a connection to rx db for default display
+// Include connection script
 require "dbconnection.php";
-
-function parse_and_validate_parameters() {
-    global $dbc;
-
-    // Initialize parameters
-    $params = array(
-        'year' => $_GET['year'] ?? null,
-        'month' => $_GET['month'] ?? null,
-        'day' => $_GET['day'] ?? null,
-        'category' => $_GET['category'] ?? null,
-        'mon' => $_GET['mon'] ?? null, // MON column in the database
-        'event_code' => $_GET['event_code'] ?? null // EVENT_CODE column in the database
-    );
-
-    // Validate each parameter if present
-    foreach ($params as $key => $value) {
-        if ($value !== null) {
-            if (!validate_parameter($key, $value)) {
-                die("Invalid value for parameter: $key");
-            }
-        }
-    }
-
-    return $params;
-}
-
-function validate_parameter($key, $value) {
-    global $dbc;
-
-    // Validate based on the parameter and column type
-    switch ($key) {
-        case 'year':
-            if (!ctype_digit((string)$value) || strlen((string)$value) !== 4) {
-                return false;
-            }
-            break;
-        case 'month':
-            if (!ctype_digit((string)$value) || !(1 <= $value && $value <= 12)) {
-                return false;
-            }
-            break;
-        case 'day':
-            if ((1 <= $value && $value <= 31) || $value == "all") {
-                break;
-            } else {
-                return false;
-            }
-        case 'mon':
-            // Up to 6 monitor channels on endec
-            if (!ctype_digit((string)$value) || !(1 <= $value && $value <= 6)) {
-                return false;
-            }
-            break;
-
-        case 'event_code':
-            if (!ctype_upper((string)$value) || !(strlen(ctype_upper((string)$value))) == 3) {
-                return false;
-            }
-            break;
-
-        case 'category':
-            if ($value == "warning" || $value == "watch" || $value == "advisory" || $value == "test") {
-                break;
-            } else {
-                return false; 
-            } 
-
-        }
-
-    return true;
-}
-
-function get_available_values($column) {
-    global $dbc;
-
-    // Get unique values for a given column
-    $stmt = $dbc->prepare("SELECT DISTINCT $column FROM alerts");
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    $values = array();
-    while ($row = $result->fetch_assoc()) {
-        if (!empty($row[$column])) {
-            $values[] = $row[$column];
-        }
-    }
-
-    return $values;
-}
-
-function build_query_conditions($params) {
-
-    $conditions = array();
-
-    // Check for and add conditions for each parameter
-    if ($params['year'] !== null) {
-        $conditions[] = "YEAR(TIMESTP) = '" . (int)$params['year'] . "'";
-    }
-    if ($params['month'] !== null) {
-        $conditions[] = "MONTH(TIMESTP) = '" . (int)$params['month'] . "'";
-    }
-    if ($params['day'] !== null) {
-        if ($params['day'] !== "all") {
-            $conditions[] = "DAY(TIMESTP) = '" . (int)$params['day'] . "'";
-        }
-    }
-    if ($params['mon'] !== null) {
-        $conditions[] = "MON = '" . "#" . (int)$params['mon'] . "'";
-        }
-    if ($params['event_code'] !== null) {
-        $conditions[] = "EVENT_CODE = '" . $params['event_code'] . "'";
-    }
-    if ($params['category'] !== null) {
-        $conditions[] = "TYPE = '" . $params['category'] . "'";
-    }
-    // Take all applicable parameters and combine them to append to the query
-    return implode(" AND ", $conditions);
-}
-
-function getCardColor($type) {
-    switch ($type) {
-        case 'test':
-            return '#6cd46c'; // Green
-        case 'warning':
-            return '#db4f4f'; // Red
-        case 'watch':
-            return '#e09231'; // Orange
-        case 'advisory':
-            return '#fcea4c'; // Yellow
-        default:
-            return '#c9c9c9'; // Default background if TYPE is not recognized
-    }
-
-}
-
-// Main execution
-
-global $dbc;
-$dbc = connect_to_db('digidec_rx_log');
-
-$params = parse_and_validate_parameters();
-
-$query_conditions = build_query_conditions($params);
-
-$sql = "SELECT * FROM alerts";
-if (!empty($query_conditions)) {
-    $sql .= " WHERE " . $query_conditions . " ORDER BY TIMESTP DESC";
-} else {
-    $sql .= " ORDER BY TIMESTP DESC";
-}
-
-$stmt = $dbc->prepare($sql);
-$stmt->execute();
-
 ?>
 
 <!DOCTYPE html>
@@ -283,6 +129,7 @@ $stmt->execute();
                             </div>
                         </div>
                         <div class="modal-footer">
+                            <!-- <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button> -->
                             <button type="submit" class="btn btn-primary">Submit</button>
                         </div>
                 </form>
@@ -334,12 +181,9 @@ $stmt->execute();
                                 <select class="month-select form-select" id="#alertMonthDropdown">
                                 </select>
                             </div>
-                            <div class="day-dropdown dropdown col">
-                                <select class="day-select form-select" id="#alertDayDropdown">
-                                </select>
-                            </div>
                         </div>
                         <div class="modal-footer">
+                            <!-- <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button> -->
                             <button type="submit" class="btn btn-primary">Submit</button>
                         </div>
                 </form>
@@ -364,6 +208,7 @@ $stmt->execute();
                             </div>
                         </div>
                         <div class="modal-footer">
+                            <!-- <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button> -->
                             <button type="submit" class="btn btn-primary">Submit</button>
                         </div>
                 </form>
@@ -390,49 +235,117 @@ $stmt->execute();
         <!-- End About Modal -->
 
         <!-- Main Content -->
-        <h1 class="text-center my-4" id="titletext">Filtered Recieved Alerts</h1>
+        <h1 class="text-center my-4">Alert Statistics</h1>
+        
+        <?php
+            try {
+                // Fetch data from database in reverse order, newest alert at top
+                $conn = connect_to_db("digidec_rx_log");
+                $monitornums = $conn->query("SELECT DISTINCT mon as monitor FROM alerts");
+                $mnum = $monitornums->fetchAll(PDO::FETCH_ASSOC);
+            } catch (PDOException $e) {
+                echo "Error fetching data: " . $e->getMessage();
+            }
+            $conn = connect_to_db("digidec_rx_log");
+            $rxKitchenSink = "SELECT 
+                    (SELECT COUNT(*) FROM alerts WHERE TYPE = 'warning') AS warning_count,
+                    (SELECT COUNT(*) FROM alerts WHERE TYPE = 'watch') AS watch_count,
+                    (SELECT COUNT(*) FROM alerts WHERE TYPE = 'advisory') AS advisory_count,
+                    (SELECT COUNT(*) FROM alerts WHERE TYPE = 'test') AS test_count,
+                    (SELECT COUNT(*) FROM alerts) AS total_count,
+                    (SELECT DATE(TIMESTP) FROM alerts GROUP BY DATE(TIMESTP) ORDER BY COUNT(*) DESC LIMIT 1) AS most_active_date,
+    				(SELECT COUNT(*) FROM alerts WHERE DATE(TIMESTP) = (SELECT DATE(TIMESTP) FROM alerts WHERE mon = '#1' GROUP BY DATE(TIMESTP) ORDER BY COUNT(*) DESC LIMIT 1)) AS most_active_count,
+                    (SELECT MON FROM alerts GROUP BY MON ORDER BY COUNT(*) DESC LIMIT 1) AS most_active_channel";
 
-        <!-- Displaying Data in Cards -->
-        <div class="row" id="alertcards">
-            <?php foreach ($stmt as $item): ?>
-                <div class="col-md-12" id="alertdiv">
-                    <div class="card alertcard border-0 rounded-3">
-                        <div class="card-body rounded-3" style="background-color: <?php echo getCardColor($item['TYPE']); ?>">
-                            <h4 class="card-title"><strong><?php echo $item['EVENT_TXT']; ?></strong></h4>
-                            <p class="card-text"><?php echo $item['DESCR']; ?></p>
-                            <p class="text-black-50 small">Filter: <?php echo $item['FILTER']; ?></p>
-                            <p class="text-black-50 small">Alert recieved at: <?php echo $item['TIMESTP']; ?> on MON <?php echo $item['MON']; ?></p>
-                            <p class="text-black-50 small"><?php echo $item['ZCZC_STR']; ?></p>
-                        </div>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-            <!-- End Displaying Data in Cards -->
-        </div>
+            $rxResult = $conn->query($rxKitchenSink);
+            $rxFetched = $rxResult->fetch(PDO::FETCH_ASSOC);
 
-        <!-- No Alerts Card -->
-        <div class="row" id="noalerts" style="display: none;">
-            <div class="col-md-12">
-                <div class="card border-0 rounded-3">
-                    <div class="card-body rounded-3" style="background-color: var(--bs-gray-400)">
-                        <h4 class="card-title">No Alerts Found</strong></h4>
-                        <p class="card-text">The database does not have any entries matching the query</p>
+            $conn = connect_to_db("digidec_tx_log");
+            $txKitchenSink = "SELECT 
+                    (SELECT COUNT(*) FROM alerts WHERE TYPE = 'warning') AS warning_count,
+                    (SELECT COUNT(*) FROM alerts WHERE TYPE = 'watch') AS watch_count,
+                    (SELECT COUNT(*) FROM alerts WHERE TYPE = 'advisory') AS advisory_count,
+                    (SELECT COUNT(*) FROM alerts WHERE TYPE = 'test') AS test_count,
+                    (SELECT COUNT(*) FROM alerts) AS total_count,
+                    (SELECT DATE(TIMESTP) FROM alerts GROUP BY DATE(TIMESTP) ORDER BY COUNT(*) DESC LIMIT 1) AS most_active_date,
+    				(SELECT COUNT(*) FROM alerts WHERE DATE(TIMESTP) = (SELECT DATE(TIMESTP) FROM alerts GROUP BY DATE(TIMESTP) ORDER BY COUNT(*) DESC LIMIT 1)) AS most_active_count";
+
+            $txResult = $conn->query($txKitchenSink);
+            $txFetched = $txResult->fetch(PDO::FETCH_ASSOC);
+
+            function monQueryBuilder($monnum){
+                $conn = connect_to_db("digidec_rx_log");
+                $monQuery = "SELECT 
+                    (SELECT COUNT(*) FROM alerts WHERE TYPE = 'warning' AND mon = '{$monnum}') AS mon_warning_count,
+                    (SELECT COUNT(*) FROM alerts WHERE TYPE = 'watch' AND mon = '{$monnum}') AS mon_watch_count,
+                    (SELECT COUNT(*) FROM alerts WHERE TYPE = 'advisory' AND mon = '{$monnum}') AS mon_advisory_count,
+                    (SELECT COUNT(*) FROM alerts WHERE TYPE = 'test' AND mon = '{$monnum}') AS mon_test_count,
+                    (SELECT COUNT(*) FROM alerts WHERE mon = '{$monnum}') AS mon_total_count,
+                    (SELECT DATE(TIMESTP) FROM alerts WHERE mon = '{$monnum}' GROUP BY DATE(TIMESTP) ORDER BY COUNT(*) DESC LIMIT 1) AS mon_most_active_date,
+    				(SELECT COUNT(*) FROM alerts WHERE DATE(TIMESTP) = (SELECT DATE(TIMESTP) FROM alerts WHERE mon = '{$monnum}' GROUP BY DATE(TIMESTP) ORDER BY COUNT(*) DESC LIMIT 1)) AS mon_most_active_count";
+
+                $monResult = $conn->query($monQuery);
+                $monFetched = $monResult->fetch(PDO::FETCH_ASSOC);
+                return $monFetched;
+            }
+        ?>
+        <div class="statsdiv border-0 row g-0" id="statsmain">
+            <div class="row g-0" id="rxtxstats">
+                <div class="card statcard rounded-3 p-0 col" style="width: 18rem;">
+                    <div class="card-body rounded-3">
+                        <h5 class="card-title text-reset card-stat-text-white">Recieved Alerts</h5>
+                        <p class="card-text text-reset">Total of all recieved alerts in the database</p>
+                        <p class="card-text text-reset">Most active day: <?php echo $rxFetched['most_active_date'] ?> (<?php echo $rxFetched['most_active_count'] ?> alerts)</p>
                     </div>
-                </div>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item border-0" style="background-color: #db4f4f">Warnings:<P class="float-end m-0"><?php echo $rxFetched['warning_count'] ?></P></li>
+                        <li class="list-group-item border-0" style="background-color: #e09231">Watches:<P class="float-end m-0"><?php echo $rxFetched['watch_count'] ?></P></li>
+                        <li class="list-group-item border-0" style="background-color: #fcea4c">Advisories:<P class="float-end m-0"><?php echo $rxFetched['advisory_count'] ?></P></li>
+                        <li class="list-group-item border-0" style="background-color: #6cd46c">Tests:<P class="float-end m-0"><?php echo $rxFetched['test_count'] ?></P></li>
+                        <li class="list-group-item border-top" style="background-color:rgb(108, 179, 212)">Total:<P class="float-end m-0"><?php echo $rxFetched['total_count'] ?></P></li>
+                    </div>
+
+
+                <div class="card statcard rounded-3 p-0 col" style="width: 18rem;">
+                    <div class="card-body rounded-3">
+                        <h5 class="card-title text-reset card-stat-text-white">Sent Alerts</h5>
+                        <p class="card-text text-reset">Total of all sent alerts in the database</p>
+                        <p class="card-text text-reset">Most active day: <?php echo $txFetched['most_active_date'] ?> (<?php echo $txFetched['most_active_count'] ?> alerts)</p>
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item border-0" style="background-color: #db4f4f">Warnings:<P class="float-end m-0"><?php echo $txFetched['warning_count'] ?></P></li>
+                        <li class="list-group-item border-0" style="background-color: #e09231">Watches:<P class="float-end m-0"><?php echo $txFetched['watch_count'] ?></P></li>
+                        <li class="list-group-item border-0" style="background-color: #fcea4c">Advisories:<P class="float-end m-0"><?php echo $txFetched['advisory_count'] ?></P></li>
+                        <li class="list-group-item border-0" style="background-color: #6cd46c">Tests:<P class="float-end m-0"><?php echo $txFetched['test_count'] ?></P></li>
+                        <li class="list-group-item border-top" style="background-color:rgb(108, 179, 212)">Total:<P class="float-end m-0"><?php echo $txFetched['total_count'] ?></P></li>
+                    </div>
+            </div>
+
+            <div class="monstatdiv border-0 row g-0" id="monstatdiv">
+            <?php foreach ($mnum as $item): 
+                // Run query once for each monitor
+               $mqbResults = monQueryBuilder($item['monitor']);
+            ?>
+                <div class="card statcard rounded-3 p-0 col" style="width: 18rem;">
+                    <div class="card-body rounded-3">
+                        <h5 class="card-title text-reset card-stat-text-white">Monitor <?php echo $item['monitor']; ?></h5>
+                        <p class="card-text text-reset">All Received alerts from Mon <?php echo $item['monitor']; ?></p>
+                        <p class="card-text text-reset">Most active day: <?php echo $mqbResults['mon_most_active_date'] ?> (<?php echo $mqbResults['mon_most_active_count'] ?> alerts)</p>
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item border-0" style="background-color: #db4f4f">Warnings:<P class="float-end m-0"><?php echo $mqbResults['mon_warning_count'] ?></P></li>
+                        <li class="list-group-item border-0" style="background-color: #e09231">Watches:<P class="float-end m-0"><?php echo $mqbResults['mon_watch_count'] ?></P></li>
+                        <li class="list-group-item border-0" style="background-color: #fcea4c">Advisories:<P class="float-end m-0"><?php echo $mqbResults['mon_advisory_count'] ?></P></li>
+                        <li class="list-group-item border-0" style="background-color: #6cd46c">Tests:<P class="float-end m-0"><?php echo $mqbResults['mon_test_count'] ?></P></li>
+                        <li class="list-group-item border-top" style="background-color:rgb(108, 179, 212)">Total:<P class="float-end m-0"><?php echo $mqbResults['mon_total_count'] ?></P></li>
+                    </div>
+            <?php endforeach; ?>       
             </div>
         </div>
-        <!-- End No Alerts Card -->
+
+        
 
         <!-- End Main Content -->
-
-        <script>
-            if (document.getElementById('alertdiv') == null) {
-                document.getElementById('noalerts').setAttribute('style', "display: block;")
-            } else {
-                let alertCount = document.getElementById('alertcards').childElementCount
-                document.getElementById('titletext').innerHTML += ` <span class="badge bg-dark">${alertCount}</span>`
-            }
-        </script>
 
         <script src="/js/popper.min.js"></script>
         <script src="/js/bootstrap.min.js"></script>

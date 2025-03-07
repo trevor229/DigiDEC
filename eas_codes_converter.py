@@ -8,30 +8,32 @@ with open("settings.json", "r") as configfile:
 # Define embed colors in hex
 
 RED=configdata['embed']['alert_colors']['red_hex']
+ORG=configdata['embed']['alert_colors']['org_hex']
 YEL=configdata['embed']['alert_colors']['yel_hex']
-GRN=configdata['embed']['alert_colors']['grn_hex']
-# Usually going to be the same as GRN/Advisory
 TEST=configdata['embed']['alert_colors']['test_hex']
+UNK=configdata['embed']['alert_colors']['unknown_hex']
 
 # Thank you Python 3.10+ for switch statements
 def SAME2txt(code):
     match code:
         case "ADR":
-            return ["Administrative Message", GRN, "advisory"]
+            return ["Administrative Message", YEL, "advisory"]
         case "AVA":
-            return ["Avalanche Watch", YEL, "watch"]
+            return ["Avalanche Watch", ORG, "watch"]
         case "AVW":
             return ["Avalanche Warning", RED, "warning"]
+        case "BLU":
+            return ["Blue Alert", RED, "advisory"]
         case "BZW":
             return ["Blizzard Warning", RED, "warning"]
         case "CAE":
-            return ["Child Abduction Emergency", GRN, "advisory"]
+            return ["Child Abduction Emergency", YEL, "advisory"]
         case "CDW":
             return ["Civil Danger Warning", RED, "warning"]
         case "CEM":
             return ["Civil Emergency Message", RED, "warning"]
         case "CFA":
-            return ["Coastal Flood Watch", YEL, "watch"]
+            return ["Coastal Flood Watch", ORG, "watch"]
         case "CFW":
             return ["Coastal Flood Warning", RED, "warning"]
         case "DMO":
@@ -41,7 +43,7 @@ def SAME2txt(code):
         case "EAN":
             return ["Emergency Action Notification", RED, "warning"]
         case "EAT":
-            return ["Emergency Action Termination", GRN, "advisory"]
+            return ["Emergency Action Termination", YEL, "advisory"]
         case "EQW":
             return ["Earthquake Warning", RED, "warning"]
         case "EVI":
@@ -49,15 +51,15 @@ def SAME2txt(code):
         case "EWW":
             return ["Extreme Wind Warning", RED, "warning"]
         case "FFA":
-            return ["Flash Flood Watch", YEL, "watch"]
+            return ["Flash Flood Watch", ORG, "watch"]
         case "FFS":
-            return ["Flash Flood Statement", GRN, "advisory"]
+            return ["Flash Flood Statement", YEL, "advisory"]
         case "FFW":
             return ["Flash Flood Warning", RED, "warning"]
         case "FLA":
-            return ["Flood Watch", YEL, "watch"]
+            return ["Flood Watch", ORG, "watch"]
         case "FLS":
-            return ["Flood Statement", GRN, "advisory"]
+            return ["Flood Statement", YEL, "advisory"]
         case "FLW":
             return ["Flood Warning", RED, "warning"]
         case "FRW":
@@ -67,27 +69,29 @@ def SAME2txt(code):
         case "FZW":
             return ["Freeze Warning", RED, "warning"]
         case "HLS":
-            return ["Hurricane Local Statement", GRN, "advisory"]
+            return ["Hurricane Local Statement", YEL, "advisory"]
         case "HMW":
             return ["Hazardous Materials Warning", RED, "warning"]
         case "HUA":
-            return ["Hurricane Watch", YEL, "watch"]
+            return ["Hurricane Watch", ORG, "watch"]
         case "HUW":
             return ["Hurricane Warning", RED, "warning"]
         case "HWA":
-            return ["High Wind Watch", YEL, "watch"]
+            return ["High Wind Watch", ORG, "watch"]
         case "HWW":
             return ["High Wind Warning", RED, "warning"]
         case "LAE":
-            return ["Local Area Emergency", GRN, "advisory"]
+            return ["Local Area Emergency", YEL, "advisory"]
         case "LEW":
             return ["Law Enforcement Warning", RED, "warning"]
+        case "MEP":
+            return ["Missing Endangered Persons", YEL, "advisory"]
         case "NAT":
             return ["National Audible Test", TEST, "test"]
         case "NIC":
-            return ["National Information Center", GRN, "advisory"]
+            return ["National Information Center", YEL, "advisory"]
         case "NMN":
-            return ["Network Notification Message", GRN, "advisory"]
+            return ["Network Notification Message", YEL, "advisory"]
         case "NPT":
             return ["National Periodic Test", TEST, "test"]
         case "NST":
@@ -103,41 +107,38 @@ def SAME2txt(code):
         case "SMW":
             return ["Special Marine Warning", RED, "warning"]
         case "SPS":
-            return ["Special Weather Statement", GRN, "advisory"]
+            return ["Special Weather Statement", YEL, "advisory"]
         case "SPW":
             return ["Shelter In-Place Warning", RED, "warning"]
         case "SQW":
             return ["Snow Squall Warning", RED, "warning"]
         case "SSA":
-            return ["Storm Surge Watch", YEL, "watch"]
+            return ["Storm Surge Watch", ORG, "watch"]
         case "SSW":
             return ["Storm Surge Warning", RED, "warning"]
         case "SVA":
-            return ["Severe Thunderstorm Watch", YEL, "watch"]
+            return ["Severe Thunderstorm Watch", ORG, "watch"]
         case "SVR":
             return ["Severe Thunderstorm Warning", RED, "warning"]
         case "SVS":
-            return ["Severe Weather Statement", GRN, "advisory"]
+            return ["Severe Weather Statement", YEL, "advisory"]
         case "TOA":
-            return ["Tornado Watch", YEL, "watch"]
+            return ["Tornado Watch", ORG, "watch"]
         case "TOR":
             return ["Tornado Warning", RED, "warning"]
         case "TRA":
-            return ["Tropical Storm Watch", YEL, "watch"]
+            return ["Tropical Storm Watch", ORG, "watch"]
         case "TRW":
             return ["Tropical Storm Warning", RED, "warning"]
         case "TSA":
-            return ["Tsunami Watch", YEL, "watch"]
+            return ["Tsunami Watch", ORG, "watch"]
         case "TSW":
             return ["Tsunami Warning", RED, "warning"]
         case "VOW":
             return ["Volcano Warning", RED, "warning"]
         case "WSA":
-            return ["Winter Storm Watch", YEL, "watch"]
+            return ["Winter Storm Watch", ORG, "watch"]
         case "WSW":
             return ["Winter Storm Warning", RED, "warning"]
         case _:
-            return ["Unknown Alert", "AABBCC"]
-            # Unknown alert hardcoded to grey
-
-
+            return ["Unknown Alert", UNK, "unknown"]

@@ -1,0 +1,33 @@
+{
+	"embed": {
+		"alert_colors": {
+			"red_hex": "db4f4f",
+			"org_hex": "e09231",
+			"yel_hex": "fcea4c",
+			"test_hex": "6cd46c",
+			"unknown_hex": "c9c9c9"
+		}
+	},
+    "webhook": {
+        "rx_url": "",
+		"tx_url": "",
+		"zczc_str_enable": true,
+		"enable_tx_alerts": true,
+		"enable_rx_alerts": true,
+		"mon_num_enable": true,
+		"filter_display_enable": true,
+		"title_link_to_webui": true
+    },
+    "telnet": {
+        "ip": "",
+        "port": ""
+    },
+	"mysql": {
+		"server_ip": "",
+		"user": "",
+		"pass": ""
+	},
+	"general": {
+		"webui_url": ""
+	}
+}

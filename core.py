@@ -28,7 +28,7 @@ try:
                                \______/                                   
             """)
         print('\n')
-        print("DigiDEC v0.1 by trevor229 | https://github.com/trevor229")
+        print("DigiDEC v2 by trevor229 | https://github.com/trevor229")
         print("\nSAGE EAS Endec Serial/Telnet Logging Software with Discord Webhook integration")
         print('\n')
 except FileNotFoundError:
@@ -37,13 +37,20 @@ except FileNotFoundError:
 
 # Serial Server IP here
 HOST=configdata['telnet']['ip']
-
 # Remote port here. 10001 and 10002 for UDS200
 PORT=configdata['telnet']['port']
+# Load enable variables
+RXWH_ENABLE = configdata['webhook']['enable_rx_alerts']
+TXWH_ENABLE = configdata['webhook']['enable_tx_alerts']
 
 tn = telnetlib.Telnet()
 
-tn.open(HOST, port=PORT)
+try:
+    tn.open(HOST, port=PORT)
+    print("Connected to telnet server!")
+except:
+    print("Failed to connect to telnet server. Is the connection already in use?")
+    exit()
 
 # Use unicodedata library to remove unicode characters from provided text (ie \r, \n)
 def remove_control_characters(s):
@@ -61,7 +68,7 @@ def sentAlert(rawdata):
     ZCZC_TEXT = re.split(r'\b[-+]',"".join(ZCZC_TEXT))
 
     COMBINED = [LOCAL,MAIN_TEXT,ZCZC_TEXT]
-
+    # Take our 3 letter event code and reference its full name
     EVENT = eas_codes_converter.SAME2txt(ZCZC_TEXT[2])
 
     
@@ -73,7 +80,7 @@ def sentAlert(rawdata):
             passwd = configdata['mysql']['pass']
         )
         cursorObject = dbase.cursor()
-        cursorObject.execute("USE digidec_tx_log")
+        cursorObject.execute("USE test_tx_data")
 
         SQL = "INSERT INTO alerts (EVENT_TXT,EVENT_CODE,DESCR,ZCZC_STR,TYPE) VALUES (%s,%s,%s,%s,%s)"  # Note: no quotes
         data = (EVENT[0],ZCZC_TEXT[2],''.join(MAIN_TEXT),'-'.join(ZCZC_TEXT),EVENT[2])
@@ -90,8 +97,9 @@ def sentAlert(rawdata):
         print(e)
 
 
-    # POST output to Discord webhook
-    webhook_generator.determineType(COMBINED, 1)
+    # POST output to Discord webhook if enabled
+    if TXWH_ENABLE:
+        webhook_generator.generateLocalAlertEmbed(COMBINED)
 
 def rxAlert(rawdata):
 
@@ -118,7 +126,7 @@ def rxAlert(rawdata):
             passwd = configdata['mysql']['pass']
         )
         cursorObject = dbase.cursor()
-        cursorObject.execute("USE digidec_rx_log")
+        cursorObject.execute("USE test_rx_data")
 
         SQL = "INSERT INTO alerts (EVENT_TXT,EVENT_CODE,FILTER,MON,DESCR,ZCZC_STR,TYPE) VALUES (%s,%s,%s,%s,%s,%s,%s)"  # Note: no quotes
         data = (EVENT[0],ZCZC_TEXT[2],''.join(FILTER_MATCHED),''.join(MON_NUM),''.join(MAIN_TEXT),'-'.join(ZCZC_TEXT),EVENT[2])
@@ -134,15 +142,11 @@ def rxAlert(rawdata):
         print('\n')
         print(e)
 
-    # POST output to Discord webhook
-    webhook_generator.determineType(COMBINED, 2)
+    # POST output to Discord webhook if enabled
+    if RXWH_ENABLE:
+        webhook_generator.generateRXAlertEmbed(COMBINED)
 
-# async is for nerds
 while True:
-    #selection = input("\nPress q to quit...")
-    #if selection == "Q" or selection == "q":
-    #    print("Quitting")
-    #    sys.exit()
     # telnetlib read stream until ENDECEND is recieved then continue on
     output = tn.read_until(b'<ENDECEND>')
     # Decode bytes-like object into usable ascii string
@@ -161,5 +165,5 @@ while True:
         print("\nAlert Relayed by Endec!\n")
         #rxAlert(NICERDATA)
     else:
-        print("fuckinuhhhhhhhhhhhh")
+        print("ERROR: Formatted alert data did not match final check!")
         print(NICERDATA)

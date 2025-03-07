@@ -1,161 +1,9 @@
 <?php
 // Include connection script, but also initiate a connection to rx db for default display
 require "dbconnection.php";
-
-function parse_and_validate_parameters() {
-    global $dbc;
-
-    // Initialize parameters
-    $params = array(
-        'year' => $_GET['year'] ?? null,
-        'month' => $_GET['month'] ?? null,
-        'day' => $_GET['day'] ?? null,
-        'category' => $_GET['category'] ?? null,
-        'mon' => $_GET['mon'] ?? null, // MON column in the database
-        'event_code' => $_GET['event_code'] ?? null // EVENT_CODE column in the database
-    );
-
-    // Validate each parameter if present
-    foreach ($params as $key => $value) {
-        if ($value !== null) {
-            if (!validate_parameter($key, $value)) {
-                die("Invalid value for parameter: $key");
-            }
-        }
-    }
-
-    return $params;
-}
-
-function validate_parameter($key, $value) {
-    global $dbc;
-
-    // Validate based on the parameter and column type
-    switch ($key) {
-        case 'year':
-            if (!ctype_digit((string)$value) || strlen((string)$value) !== 4) {
-                return false;
-            }
-            break;
-        case 'month':
-            if (!ctype_digit((string)$value) || !(1 <= $value && $value <= 12)) {
-                return false;
-            }
-            break;
-        case 'day':
-            if ((1 <= $value && $value <= 31) || $value == "all") {
-                break;
-            } else {
-                return false;
-            }
-        case 'mon':
-            // Up to 6 monitor channels on endec
-            if (!ctype_digit((string)$value) || !(1 <= $value && $value <= 6)) {
-                return false;
-            }
-            break;
-
-        case 'event_code':
-            if (!ctype_upper((string)$value) || !(strlen(ctype_upper((string)$value))) == 3) {
-                return false;
-            }
-            break;
-
-        case 'category':
-            if ($value == "warning" || $value == "watch" || $value == "advisory" || $value == "test") {
-                break;
-            } else {
-                return false; 
-            } 
-
-        }
-
-    return true;
-}
-
-function get_available_values($column) {
-    global $dbc;
-
-    // Get unique values for a given column
-    $stmt = $dbc->prepare("SELECT DISTINCT $column FROM alerts");
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    $values = array();
-    while ($row = $result->fetch_assoc()) {
-        if (!empty($row[$column])) {
-            $values[] = $row[$column];
-        }
-    }
-
-    return $values;
-}
-
-function build_query_conditions($params) {
-
-    $conditions = array();
-
-    // Check for and add conditions for each parameter
-    if ($params['year'] !== null) {
-        $conditions[] = "YEAR(TIMESTP) = '" . (int)$params['year'] . "'";
-    }
-    if ($params['month'] !== null) {
-        $conditions[] = "MONTH(TIMESTP) = '" . (int)$params['month'] . "'";
-    }
-    if ($params['day'] !== null) {
-        if ($params['day'] !== "all") {
-            $conditions[] = "DAY(TIMESTP) = '" . (int)$params['day'] . "'";
-        }
-    }
-    if ($params['mon'] !== null) {
-        $conditions[] = "MON = '" . "#" . (int)$params['mon'] . "'";
-        }
-    if ($params['event_code'] !== null) {
-        $conditions[] = "EVENT_CODE = '" . $params['event_code'] . "'";
-    }
-    if ($params['category'] !== null) {
-        $conditions[] = "TYPE = '" . $params['category'] . "'";
-    }
-    // Take all applicable parameters and combine them to append to the query
-    return implode(" AND ", $conditions);
-}
-
-function getCardColor($type) {
-    switch ($type) {
-        case 'test':
-            return '#6cd46c'; // Green
-        case 'warning':
-            return '#db4f4f'; // Red
-        case 'watch':
-            return '#e09231'; // Orange
-        case 'advisory':
-            return '#fcea4c'; // Yellow
-        default:
-            return '#c9c9c9'; // Default background if TYPE is not recognized
-    }
-
-}
-
-// Main execution
-
-global $dbc;
-$dbc = connect_to_db('digidec_rx_log');
-
-$params = parse_and_validate_parameters();
-
-$query_conditions = build_query_conditions($params);
-
-$sql = "SELECT * FROM alerts";
-if (!empty($query_conditions)) {
-    $sql .= " WHERE " . $query_conditions . " ORDER BY TIMESTP DESC";
-} else {
-    $sql .= " ORDER BY TIMESTP DESC";
-}
-
-$stmt = $dbc->prepare($sql);
-$stmt->execute();
-
+$conn = connect_to_db("digidec_rx_log");
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="dark">
@@ -390,11 +238,34 @@ $stmt->execute();
         <!-- End About Modal -->
 
         <!-- Main Content -->
-        <h1 class="text-center my-4" id="titletext">Filtered Recieved Alerts</h1>
+        <h1 class="text-center my-4">Latest Recieved Alerts</h1>
 
+        <?php
+        try {
+            // Fetch data from database in reverse order, newest alert at top
+            $stmt = $conn->query("SELECT * FROM alerts ORDER BY TIMESTP DESC LIMIT 3");
+            $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (PDOException $e) {
+            echo "Error fetching data: " . $e->getMessage();
+        }
+        ?>
+        <?php function getCardColor($type) {
+            switch ($type) {
+                case 'test':
+                    return '#6cd46c'; // Green
+                case 'warning':
+                    return '#db4f4f'; // Red
+                case 'watch':
+                    return '#e09231'; // Orange
+                case 'advisory':
+                    return '#fcea4c'; // Yellow
+                default:
+                    return '#c9c9c9'; // Default background if TYPE is not recognized
+            }
+        } ?>
         <!-- Displaying Data in Cards -->
         <div class="row" id="alertcards">
-            <?php foreach ($stmt as $item): ?>
+            <?php foreach ($data as $item): ?>
                 <div class="col-md-12" id="alertdiv">
                     <div class="card alertcard border-0 rounded-3">
                         <div class="card-body rounded-3" style="background-color: <?php echo getCardColor($item['TYPE']); ?>">
@@ -423,16 +294,13 @@ $stmt->execute();
         </div>
         <!-- End No Alerts Card -->
 
-        <!-- End Main Content -->
-
         <script>
             if (document.getElementById('alertdiv') == null) {
                 document.getElementById('noalerts').setAttribute('style', "display: block;")
-            } else {
-                let alertCount = document.getElementById('alertcards').childElementCount
-                document.getElementById('titletext').innerHTML += ` <span class="badge bg-dark">${alertCount}</span>`
             }
         </script>
+
+        <!-- End Main Content -->
 
         <script src="/js/popper.min.js"></script>
         <script src="/js/bootstrap.min.js"></script>
